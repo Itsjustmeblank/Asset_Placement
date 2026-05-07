@@ -186,17 +186,14 @@ class PlacementUI(QtWidgets.QWidget):
         self.clear_preview()
 # Object Manager
     def on_preview(self):
-
         self.generate_preview()
 
 
     def on_confirm(self):
-
         self.confirm_placement()
 
 
     def on_clear(self):
-
         self.clear_preview()
 # Wrapper (necessary?)
 
