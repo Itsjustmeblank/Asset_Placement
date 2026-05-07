@@ -104,7 +104,18 @@ class PlacementUI(QtWidgets.QWidget):
             "auto_run": self.autorun_checkbox.isChecked(),
         }
 
-# Tool Logic
+    def get_distance(self, pos1, pos2):         #check distance for later 
+
+        x1, y1, z1 = pos1
+        x2, y2, z2 = pos2
+
+        return math.sqrt(
+            (x2 - x1) ** 2 +
+            (y2 - y1) ** 2 +
+            (z2 - z1) ** 2
+        )
+    
+
     def generate_preview(self):
 
         global preview_objects
