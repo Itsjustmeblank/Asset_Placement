@@ -7,6 +7,7 @@ import random, math
 preview_objects = []
 final_objects = []
 positions = []
+placement_ui = None
 
 
 # UI Setup
@@ -103,19 +104,6 @@ class PlacementUI(QtWidgets.QWidget):
             "auto_run": self.autorun_checkbox.isChecked(),
         }
 
-
-#temp.
-    def on_preview(self):
-        print("Preview:", self.get_settings())
-
-    def on_confirm(self):
-        print("Confirm:", self.get_settings())
-
-    def on_clear(self):
-        print("Clear clicked") #
-
-
-
 # Tool Logic
     def generate_preview(self):
 
@@ -154,10 +142,31 @@ class PlacementUI(QtWidgets.QWidget):
         positions = []
 
 # Placement Class
+    def clear_preview(self):
+
+        global preview_objects
+        global positions
+
+        if preview_objects:
+            cmds.delete(preview_objects)
+
+        preview_objects = []
+        positions = []
+
+
+
     def confirm_placement(self):
 
         global final_objects
         global positions
+
+
+        selected = cmds.ls(selection=True)
+        if not selected:
+            cmds.warning("Please select an object first.")
+            return
+
+        source_object = selected[0]
 
 
         if final_objects:
@@ -168,45 +177,41 @@ class PlacementUI(QtWidgets.QWidget):
         settings = self.get_settings()
         prefix = settings["prefix"]
 
+  
+        for i, pos in enumerate(positions):         #duplicates
 
-        for i, pos in enumerate(positions):
-
-
-            asset = cmds.polySphere(                            #TEST
+            asset = cmds.duplicate(
+                source_object,
                 name="{}_{}".format(prefix, i)
             )[0]
 
-
-            cmds.move(pos[0], pos[1], pos[2], asset)            #TEST
-
+            cmds.move(
+                pos[0],
+                pos[1],
+                pos[2],
+                asset
+            )
 
             final_objects.append(asset)
 
-
         self.clear_preview()
-# Object Manager
+
+
+
     def on_preview(self):
+
         self.generate_preview()
 
 
     def on_confirm(self):
+
         self.confirm_placement()
 
 
     def on_clear(self):
+
         self.clear_preview()
-# Wrapper (necessary?)
 
-# run external generator
-# get created objects
-# if auto-run ON → reposition objects
-
-
-# UI Actions
-
-# preview button → run preview
-# confirm button → run confirm
-# clear button → run clear
 
 
 # Run Tool
