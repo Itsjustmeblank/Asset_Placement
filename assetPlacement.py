@@ -1,23 +1,119 @@
 import maya.cmds
-import PySide2 (QtWidgets, QtCore)
+from PySide2 import QtWidgets, QtCore
 import random, math
 
 
 # Global Variables
-
-# preview_objects = []
-# final_objects = []
-# positions = []
+preview_objects = []
+final_objects = []
+positions = []
 
 
 # UI Setup
+class PlacementUI(QtWidgets.QWidget):
 
-# create UI window
-# add inputs: count, spacing, prefix
-# add dropdown: placement mode (world / surface)
-# add checkboxes: preview, collision, grouping, auto-run
-# add buttons: preview, confirm, clear
-# gather all inputs into settings
+    def __init__(self):
+        super(PlacementUI, self).__init__()
+
+        self.setWindowTitle("Asset Placement Tool")
+        self.setMinimumWidth(300)
+
+        self.build_ui()
+        self.connect_signals()
+
+
+    def build_ui(self):
+
+        layout = QtWidgets.QVBoxLayout()
+
+
+        self.count_input = QtWidgets.QSpinBox()
+        self.count_input.setValue(10)
+
+        self.spacing_input = QtWidgets.QDoubleSpinBox()
+        self.spacing_input.setValue(2.0)
+
+        self.prefix_input = QtWidgets.QLineEdit("asset")
+
+        layout.addWidget(QtWidgets.QLabel("Asset Count"))
+        layout.addWidget(self.count_input)
+
+        layout.addWidget(QtWidgets.QLabel("Spacing"))
+        layout.addWidget(self.spacing_input)
+
+        layout.addWidget(QtWidgets.QLabel("Name Prefix"))
+        layout.addWidget(self.prefix_input)
+
+
+
+        self.mode_dropdown = QtWidgets.QComboBox()
+        self.mode_dropdown.addItems(["world", "surface"])
+        self.mode_dropdown.setCurrentText("world")
+
+        layout.addWidget(QtWidgets.QLabel("Placement Mode"))
+        layout.addWidget(self.mode_dropdown)
+
+
+
+        self.preview_checkbox = QtWidgets.QCheckBox("Preview Mode")
+        self.preview_checkbox.setChecked(True)
+
+        self.collision_checkbox = QtWidgets.QCheckBox("Collision Avoidance")
+        self.collision_checkbox.setChecked(True)
+
+        self.group_checkbox = QtWidgets.QCheckBox("Auto Group")
+        self.group_checkbox.setChecked(True)
+
+        self.autorun_checkbox = QtWidgets.QCheckBox("Auto-Run Placement")
+        self.autorun_checkbox.setChecked(False)
+
+        layout.addWidget(self.preview_checkbox)
+        layout.addWidget(self.collision_checkbox)
+        layout.addWidget(self.group_checkbox)
+        layout.addWidget(self.autorun_checkbox)
+
+
+
+        self.preview_btn = QtWidgets.QPushButton("Generate Preview")
+        self.confirm_btn = QtWidgets.QPushButton("Confirm Placement")
+        self.clear_btn = QtWidgets.QPushButton("Clear Scene")
+
+        layout.addWidget(self.preview_btn)
+        layout.addWidget(self.confirm_btn)
+        layout.addWidget(self.clear_btn)
+
+        self.setLayout(layout)
+
+
+    def connect_signals(self):
+        self.preview_btn.clicked.connect(self.on_preview)
+        self.confirm_btn.clicked.connect(self.on_confirm)
+        self.clear_btn.clicked.connect(self.on_clear)
+
+
+    def get_settings(self):
+        return {
+            "count": self.count_input.value(),
+            "spacing": self.spacing_input.value(),
+            "prefix": self.prefix_input.text(),
+            "mode": self.mode_dropdown.currentText(),
+            "preview": self.preview_checkbox.isChecked(),
+            "collision": self.collision_checkbox.isChecked(),
+            "auto_group": self.group_checkbox.isChecked(),
+            "auto_run": self.autorun_checkbox.isChecked(),
+        }
+
+
+#temp.
+    def on_preview(self):
+        print("Preview:", self.get_settings())
+
+    def on_confirm(self):
+        print("Confirm:", self.get_settings())
+
+    def on_clear(self):
+        print("Clear clicked")
+
 
 
 # Tool Logic
@@ -89,6 +185,15 @@ import random, math
 
 
 # Run Tool
+def run_tool():
+    global placement_ui
 
-# close existing UI
-# create and show new UI
+    try:
+        placement_ui.close()
+    except:
+        pass
+
+    placement_ui = PlacementUI()
+    placement_ui.show()
+
+run_tool()
