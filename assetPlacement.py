@@ -112,64 +112,92 @@ class PlacementUI(QtWidgets.QWidget):
         print("Confirm:", self.get_settings())
 
     def on_clear(self):
-        print("Clear clicked")
+        print("Clear clicked") #
 
 
 
 # Tool Logic
+    def generate_preview(self):
 
-# preview:
-    # clear preview
-    # generate positions
-    # create and place proxy cubes (or others geo)
+        global preview_objects
+        global positions
 
-# confirm:
-    # clear final objects
-    # create assets from positions
-    # rename and move objects
-    # group if enabled
-    # delete preview
 
-# clear:
-    # delete preview objects
-    # delete final objects
+        self.clear_preview()
 
+        settings = self.get_settings()
+        count = settings["count"]
+
+        for i in range(count):
+
+
+            x = random.uniform(-10, 10)
+            z = random.uniform(-10, 10)
+            y = 0
+
+            # Store position
+            positions.append((x, y, z))
+
+            cube = cmds.polyCube(name="previewCube_{}".format(i))[0]
+            cmds.move(x, y, z, cube)
+            preview_objects.append(cube)
+
+    def clear_preview(self):
+
+        global preview_objects  #required?
+        global positions
+
+        if preview_objects:
+            cmds.delete(preview_objects)
+
+        preview_objects = []
+        positions = []
 
 # Placement Class
+    def confirm_placement(self):
 
-# generate positions:
-    # create empty list
-    # loop until count reached:
-        # get random position
-        # if collision on → check spacing
-        # add valid positions
-    # return positions
-
-# distance check:
-    # calculate distance between two points
+        global final_objects
+        global positions
 
 
-# Object Manager(Class?)
+        if final_objects:
+            cmds.delete(final_objects)
 
-# create object:
-    # duplicate or instance
-    # apply name
-    # return object
+        final_objects = []
 
-# group objects:
-    # create group if needed
-    # parent all objects
+        settings = self.get_settings()
+        prefix = settings["prefix"]
 
 
-# Auto-Run
-
-# if auto-run OFF → normal generation
-# if auto-run ON:
-    # generate positions first
-    # create and move objects
-    # group if enabled
+        for i, pos in enumerate(positions):
 
 
+            asset = cmds.polySphere(                            #TEST
+                name="{}_{}".format(prefix, i)
+            )[0]
+
+
+            cmds.move(pos[0], pos[1], pos[2], asset)            #TEST
+
+
+            final_objects.append(asset)
+
+
+        self.clear_preview()
+# Object Manager
+    def on_preview(self):
+
+        self.generate_preview()
+
+
+    def on_confirm(self):
+
+        self.confirm_placement()
+
+
+    def on_clear(self):
+
+        self.clear_preview()
 # Wrapper (necessary?)
 
 # run external generator
