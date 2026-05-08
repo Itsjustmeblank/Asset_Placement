@@ -33,6 +33,11 @@ class PlacementUI(QtWidgets.QWidget):
 
         self.spacing_input = QtWidgets.QDoubleSpinBox()
         self.spacing_input.setValue(2.0)
+        self.area_input = QtWidgets.QDoubleSpinBox()
+        self.area_input.setValue(50.0)
+
+        layout.addWidget(QtWidgets.QLabel("Placement Area"))
+        layout.addWidget(self.area_input)
 
         self.prefix_input = QtWidgets.QLineEdit("asset")
 
@@ -67,7 +72,10 @@ class PlacementUI(QtWidgets.QWidget):
 
         self.autorun_checkbox = QtWidgets.QCheckBox("Auto-Run Placement")
         self.autorun_checkbox.setChecked(False)
+        self.instance_checkbox = QtWidgets.QCheckBox("Use Instances")
+        self.instance_checkbox.setChecked(False)
 
+        layout.addWidget(self.instance_checkbox)
         layout.addWidget(self.preview_checkbox)
         layout.addWidget(self.collision_checkbox)
         layout.addWidget(self.group_checkbox)
@@ -102,6 +110,8 @@ class PlacementUI(QtWidgets.QWidget):
             "collision": self.collision_checkbox.isChecked(),
             "auto_group": self.group_checkbox.isChecked(),
             "auto_run": self.autorun_checkbox.isChecked(),
+            "instance": self.instance_checkbox.isChecked(),
+            "area": self.area_input.value(),
         }
 
     def get_distance(self, pos1, pos2):         #check distance for later 
@@ -114,7 +124,45 @@ class PlacementUI(QtWidgets.QWidget):
             (y2 - y1) ** 2 +
             (z2 - z1) ** 2
         )
-    
+    def get_surface_position(self, surface):
+
+        bbox = cmds.exactWorldBoundingBox(surface)
+
+        min_x = bbox[0]
+        min_y = bbox[1]
+        min_z = bbox[2]
+
+        max_x = bbox[3]
+        max_y = bbox[4]
+        max_z = bbox[5]
+
+
+        x = random.uniform(min_x, max_x)
+        z = random.uniform(min_z, max_z)
+
+        start_y = max_y + 100
+
+        locator = cmds.spaceLocator()[0]
+
+        cmds.move(
+            x,
+            start_y,
+            z,
+            locator
+        )
+        cmds.geometryConstraint(
+            surface,
+            locator
+        )
+        pos = cmds.xform(
+            locator,
+            query=True,
+            worldSpace=True,
+            translation=True
+        )
+        cmds.delete(locator)
+
+        return pos 
 
     def generate_preview(self):
 
@@ -128,6 +176,8 @@ class PlacementUI(QtWidgets.QWidget):
         count = settings["count"]
         spacing = settings["spacing"]
         collision = settings["collision"]
+        mode = settings["mode"]
+        area = settings["area"]
 
         attempts = 0
         max_attempts = 1000
@@ -138,11 +188,27 @@ class PlacementUI(QtWidgets.QWidget):
             attempts += 1
 
 
-            x = random.uniform(-50, 50)                         #size option?
-            z = random.uniform(-50, 50)
-            y = 0
+            if mode == "world":
 
-            new_pos = (x, y, z)
+                x = random.uniform(-area, area)
+                z = random.uniform(-area, area)
+                y = 0
+
+                new_pos = (x, y, z)
+
+
+            elif mode == "surface":
+
+                selected = cmds.ls(selection=True)
+
+                if not selected:
+
+                    cmds.warning("Select a surface object.")
+                    return
+
+                surface = selected[0]
+
+                new_pos = self.get_surface_position(surface)
 
             valid = True
 
@@ -156,12 +222,11 @@ class PlacementUI(QtWidgets.QWidget):
                         existing_pos
                     )
 
-                    # Reject close positions
+
                     if distance < spacing:
 
                         valid = False
                         break
-
 
             if valid:
 
@@ -173,7 +238,12 @@ class PlacementUI(QtWidgets.QWidget):
                     )
                 )[0]
 
-                cmds.move(x, y, z, cube)
+                cmds.move(
+                    new_pos[0],
+                    new_pos[1],
+                    new_pos[2],
+                    cube
+                )
 
                 preview_objects.append(cube)
 
@@ -213,10 +283,19 @@ class PlacementUI(QtWidgets.QWidget):
   
         for i, pos in enumerate(positions):         #duplicates
 
-            asset = cmds.duplicate(
-                source_object,
-                name="{}_{}".format(prefix, i)
-            )[0]
+            if settings["instance"]:
+
+                asset = cmds.instance(
+                    source_object,
+                    name="{}_{}".format(prefix, i)
+                )[0]
+
+            else:
+
+                asset = cmds.duplicate(
+                    source_object,
+                    name="{}_{}".format(prefix, i)
+                )[0]
 
             cmds.move(
                 pos[0],
@@ -258,7 +337,15 @@ class PlacementUI(QtWidgets.QWidget):
 
     def on_clear(self):
 
+        global final_objects
+
         self.clear_preview()
+
+        if final_objects:
+
+            cmds.delete(final_objects)
+
+        final_objects = []
 
 
 
