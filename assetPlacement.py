@@ -121,38 +121,62 @@ class PlacementUI(QtWidgets.QWidget):
         global preview_objects
         global positions
 
-
         self.clear_preview()
 
         settings = self.get_settings()
+
         count = settings["count"]
+        spacing = settings["spacing"]
+        collision = settings["collision"]
 
-        for i in range(count):
+        attempts = 0
+        max_attempts = 1000
 
 
-            x = random.uniform(-10, 10)
-            z = random.uniform(-10, 10)
+        while len(positions) < count and attempts < max_attempts:
+
+            attempts += 1
+
+
+            x = random.uniform(-50, 50)                         #size option?
+            z = random.uniform(-50, 50)
             y = 0
 
-            # Store position
-            positions.append((x, y, z))
+            new_pos = (x, y, z)
 
-            cube = cmds.polyCube(name="previewCube_{}".format(i))[0]
-            cmds.move(x, y, z, cube)
-            preview_objects.append(cube)
+            valid = True
 
-    def clear_preview(self):
 
-        global preview_objects  #required?
-        global positions
+            if collision:
 
-        if preview_objects:
-            cmds.delete(preview_objects)
+                for existing_pos in positions:
 
-        preview_objects = []
-        positions = []
+                    distance = self.get_distance(
+                        new_pos,
+                        existing_pos
+                    )
 
-# Placement Class
+                    # Reject close positions
+                    if distance < spacing:
+
+                        valid = False
+                        break
+
+
+            if valid:
+
+                positions.append(new_pos)
+
+                cube = cmds.polyCube(
+                    name="previewCube_{}".format(
+                        len(positions)
+                    )
+                )[0]
+
+                cmds.move(x, y, z, cube)
+
+                preview_objects.append(cube)
+
     def clear_preview(self):
 
         global preview_objects
@@ -163,8 +187,6 @@ class PlacementUI(QtWidgets.QWidget):
 
         preview_objects = []
         positions = []
-
-
 
     def confirm_placement(self):
 
@@ -202,9 +224,24 @@ class PlacementUI(QtWidgets.QWidget):
                 pos[2],
                 asset
             )
-
             final_objects.append(asset)
 
+
+        if settings["auto_group"]:
+
+            group_name = "{}_GRP".format(prefix)
+
+            if not cmds.objExists(group_name):
+
+                cmds.group(
+                    empty=True,
+                    name=group_name
+                )
+
+            cmds.parent(
+                final_objects,
+                group_name
+            )
         self.clear_preview()
 
 
