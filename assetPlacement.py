@@ -34,7 +34,7 @@ class PlacementUI(QtWidgets.QWidget):
         self.spacing_input = QtWidgets.QDoubleSpinBox()
         self.spacing_input.setValue(2.0)
         self.area_input = QtWidgets.QDoubleSpinBox()
-        self.area_input.setValue(50.0)
+        self.area_input.setValue(25.0)
 
         layout.addWidget(QtWidgets.QLabel("Placement Area"))
         layout.addWidget(self.area_input)
