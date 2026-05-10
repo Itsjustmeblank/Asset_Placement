@@ -8,6 +8,7 @@ preview_objects = []
 final_objects = []
 positions = []
 placement_ui = None
+source_asset = None
 
 
 # UI Setup
@@ -117,12 +118,16 @@ class PlacementUI(QtWidgets.QWidget):
 
         global preview_objects
         global positions
+        global source_asset
 
         self.clear_preview()
 
         settings = self.get_settings()
 
         selected = cmds.ls(selection=True)
+
+        if selected:
+            source_asset = selected[0]
 
         preview_scale = 1
 
@@ -191,10 +196,10 @@ class PlacementUI(QtWidgets.QWidget):
                 )[0]
 
                 cmds.scale(
-                preview_scale,
-                preview_scale,
-                preview_scale,
-                cube
+                    width,
+                    height,
+                    depth,
+                    cube
                 )
 
                 cmds.move(
@@ -221,15 +226,11 @@ class PlacementUI(QtWidgets.QWidget):
 
         global final_objects
         global positions
+        global source_asset
 
-
-        selected = cmds.ls(selection=True)
-        if not selected:
-            cmds.warning("Please select an object first.")
+        if not source_asset:
+            cmds.warning("Generate preview with an asset selected.")
             return
-
-        source_object = selected[0]
-
 
         if final_objects:
             cmds.delete(final_objects)
@@ -245,14 +246,14 @@ class PlacementUI(QtWidgets.QWidget):
             if settings["instance"]:
 
                 asset = cmds.instance(
-                    source_object,
+                    source_asset,
                     name="{}_{}".format(prefix, i)
                 )[0]
 
             else:
 
                 asset = cmds.duplicate(
-                    source_object,
+                    source_asset,
                     name="{}_{}".format(prefix, i)
                 )[0]
 
