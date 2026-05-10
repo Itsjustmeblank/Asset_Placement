@@ -50,17 +50,6 @@ class PlacementUI(QtWidgets.QWidget):
         layout.addWidget(QtWidgets.QLabel("Name Prefix"))
         layout.addWidget(self.prefix_input)
 
-
-
-        self.mode_dropdown = QtWidgets.QComboBox()
-        self.mode_dropdown.addItems(["world", "surface"])
-        self.mode_dropdown.setCurrentText("world")
-
-        layout.addWidget(QtWidgets.QLabel("Placement Mode"))
-        layout.addWidget(self.mode_dropdown)
-
-
-
         self.preview_checkbox = QtWidgets.QCheckBox("Preview Mode")
         self.preview_checkbox.setChecked(True)
 
@@ -105,7 +94,6 @@ class PlacementUI(QtWidgets.QWidget):
             "count": self.count_input.value(),
             "spacing": self.spacing_input.value(),
             "prefix": self.prefix_input.text(),
-            "mode": self.mode_dropdown.currentText(),
             "preview": self.preview_checkbox.isChecked(),
             "collision": self.collision_checkbox.isChecked(),
             "auto_group": self.group_checkbox.isChecked(),
@@ -124,45 +112,6 @@ class PlacementUI(QtWidgets.QWidget):
             (y2 - y1) ** 2 +
             (z2 - z1) ** 2
         )
-    def get_surface_position(self, surface):
-
-        bbox = cmds.exactWorldBoundingBox(surface)
-
-        min_x = bbox[0]
-        min_y = bbox[1]
-        min_z = bbox[2]
-
-        max_x = bbox[3]
-        max_y = bbox[4]
-        max_z = bbox[5]
-
-
-        x = random.uniform(min_x, max_x)
-        z = random.uniform(min_z, max_z)
-
-        start_y = max_y + 100
-
-        locator = cmds.spaceLocator()[0]
-
-        cmds.move(
-            x,
-            start_y,
-            z,
-            locator
-        )
-        cmds.geometryConstraint(
-            surface,
-            locator
-        )
-        pos = cmds.xform(
-            locator,
-            query=True,
-            worldSpace=True,
-            translation=True
-        )
-        cmds.delete(locator)
-
-        return pos 
 
     def generate_preview(self):
 
@@ -173,10 +122,30 @@ class PlacementUI(QtWidgets.QWidget):
 
         settings = self.get_settings()
 
+        selected = cmds.ls(selection=True)
+
+        preview_scale = 1
+
+        if selected:
+
+            bbox = cmds.exactWorldBoundingBox(
+            selected[0]
+            )
+
+            width = bbox[3] - bbox[0]
+            height = bbox[4] - bbox[1]
+            depth = bbox[5] - bbox[2]
+
+            # Largest object dimension
+            preview_scale = max(
+                width,
+                height,
+                depth
+            )
+
         count = settings["count"]
         spacing = settings["spacing"]
         collision = settings["collision"]
-        mode = settings["mode"]
         area = settings["area"]
 
         attempts = 0
@@ -188,28 +157,11 @@ class PlacementUI(QtWidgets.QWidget):
             attempts += 1
 
 
-            if mode == "world":
+            x = random.uniform(-area, area)
+            z = random.uniform(-area, area)
+            y = 0
 
-                x = random.uniform(-area, area)
-                z = random.uniform(-area, area)
-                y = 0
-
-                new_pos = (x, y, z)
-
-
-            elif mode == "surface":
-
-                selected = cmds.ls(selection=True)
-
-                if not selected:
-
-                    cmds.warning("Select a surface object.")
-                    return
-
-                surface = selected[0]
-
-                new_pos = self.get_surface_position(surface)
-
+            new_pos = (x, y, z)
             valid = True
 
 
@@ -237,6 +189,13 @@ class PlacementUI(QtWidgets.QWidget):
                         len(positions)
                     )
                 )[0]
+
+                cmds.scale(
+                preview_scale,
+                preview_scale,
+                preview_scale,
+                cube
+                )
 
                 cmds.move(
                     new_pos[0],
