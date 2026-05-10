@@ -110,6 +110,14 @@ class PlacementUI(QtWidgets.QDialog):
         layout.addWidget(self.confirm_btn)
         layout.addWidget(self.clear_btn)
 
+        self.area_object_checkbox = QtWidgets.QCheckBox(
+            "Use Selected Area Object"
+        )
+
+        self.area_object_checkbox.setChecked(False)
+
+        layout.addWidget(self.area_object_checkbox)
+
         self.setLayout(layout)
 
 
@@ -132,6 +140,7 @@ class PlacementUI(QtWidgets.QDialog):
             "area": self.area_input.value(),
             "pattern": self.pattern_dropdown.currentText(),
             "seed": self.seed_input.value(),
+            "area_object": self.area_object_checkbox.isChecked(),
         }
 
     def get_distance(self, pos1, pos2):         #check distance for later 
@@ -144,6 +153,35 @@ class PlacementUI(QtWidgets.QDialog):
             (y2 - y1) ** 2 +
             (z2 - z1) ** 2
         )
+    def get_area_bounds(self):
+
+        selected = cmds.ls(selection=True)
+
+        if len(selected) < 2:
+
+            cmds.warning(
+                "Select asset first, area object second."
+            )
+
+            return None
+
+        area_object = selected[1]       #second selected
+
+        bbox = cmds.exactWorldBoundingBox(
+            area_object
+        )
+
+        min_x = bbox[0]
+        max_x = bbox[3]
+        min_z = bbox[2]
+        max_z = bbox[5]
+
+        return (
+                min_x,
+                max_x,
+                min_z,
+                max_z
+            )
 
     def generate_preview(self):
 
@@ -160,7 +198,6 @@ class PlacementUI(QtWidgets.QDialog):
         if selected:
             source_asset = selected[0]
 
-        preview_scale = 1
 
         if selected:
 
@@ -172,12 +209,6 @@ class PlacementUI(QtWidgets.QDialog):
             height = bbox[4] - bbox[1]
             depth = bbox[5] - bbox[2]
 
-            # Largest object dimension
-            preview_scale = max(
-                width,
-                height,
-                depth
-            )
 
         count = settings["count"]
         spacing = settings["spacing"]
@@ -195,8 +226,23 @@ class PlacementUI(QtWidgets.QDialog):
 
             if pattern == "Random":
 
-                x = random.uniform(-area, area)
-                z = random.uniform(-area, area)
+                if settings["area_object"]:
+
+                    bounds = self.get_area_bounds()
+
+                    if not bounds:
+                        return
+
+                    min_x, max_x, min_z, max_z = bounds
+
+                    x = random.uniform(min_x, max_x)
+                    z = random.uniform(min_z, max_z)
+
+                else:
+
+                    x = random.uniform(-area, area)
+                    z = random.uniform(-area, area)
+
                 y = 0
 
                 new_pos = (x, y, z)
@@ -273,7 +319,7 @@ class PlacementUI(QtWidgets.QDialog):
 
             valid = True
 
-            if collision:
+            if collision and pattern == "Random":
 
                 for existing_pos in positions:
 
