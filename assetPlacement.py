@@ -1,6 +1,8 @@
 import maya.cmds
 from PySide2 import QtWidgets, QtCore
 import random, math
+from shiboken2 import wrapInstance
+from maya import OpenMayaUI
 
 
 # Global Variables
@@ -10,12 +12,23 @@ positions = []
 placement_ui = None
 source_asset = None
 
+def maya_main_window():
+
+    main_window_ptr = OpenMayaUI.MQtUtil.mainWindow()
+
+    return wrapInstance(
+        int(main_window_ptr),
+        QtWidgets.QWidget
+    )
 
 # UI Setup
-class PlacementUI(QtWidgets.QWidget):
+class PlacementUI(QtWidgets.QDialog):
 
     def __init__(self):
-        super(PlacementUI, self).__init__()
+        super(
+            PlacementUI,
+            self
+        ).__init__(maya_main_window())
 
         self.setWindowTitle("Asset Placement Tool")
         self.setMinimumWidth(300)
@@ -282,6 +295,7 @@ class PlacementUI(QtWidgets.QWidget):
                 group_name
             )
         self.clear_preview()
+        self.close()
 
 
 
