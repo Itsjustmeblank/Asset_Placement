@@ -56,7 +56,10 @@ class PlacementUI(QtWidgets.QDialog):
 
         self.pattern_dropdown.addItems([
             "Random",
-            "Ring"
+            "Ring",
+            "Line",
+            "Grid",
+            "Box"       #more? wave? 
         ])
 
         self.seed_input = QtWidgets.QSpinBox()
@@ -82,7 +85,7 @@ class PlacementUI(QtWidgets.QDialog):
         self.preview_checkbox = QtWidgets.QCheckBox("Preview Mode")
         self.preview_checkbox.setChecked(True)
 
-        self.collision_checkbox = QtWidgets.QCheckBox("Collision Avoidance")
+        self.collision_checkbox = QtWidgets.QCheckBox("Collision Avoidance(Random)")
         self.collision_checkbox.setChecked(True)
 
         self.group_checkbox = QtWidgets.QCheckBox("Auto Group")
@@ -186,7 +189,6 @@ class PlacementUI(QtWidgets.QDialog):
 
 
         pattern = settings["pattern"]
-
         while len(positions) < count and attempts < max_attempts:
 
             attempts += 1
@@ -210,6 +212,61 @@ class PlacementUI(QtWidgets.QDialog):
 
                 x = math.cos(angle) * radius
                 z = math.sin(angle) * radius
+                y = 0
+
+                new_pos = (x, y, z)
+
+            elif pattern == "Line":
+
+                x = (
+                    len(positions)
+                    * spacing
+                ) - ((count - 1) * spacing / 2)
+
+                y = 0
+                z = 0
+
+                new_pos = (x, y, z)
+
+            elif pattern == "Grid":
+
+                side_count = int(math.sqrt(count))
+
+                row = len(positions) // side_count
+                col = len(positions) % side_count
+
+                x = (col * spacing) - (
+                    (side_count - 1) * spacing / 2
+                )
+
+                z = (row * spacing) - (
+                    (side_count - 1) * spacing / 2
+                )
+
+                y = 0
+
+                new_pos = (x, y, z)
+
+            elif pattern == "Box":
+
+                side_count = int(math.sqrt(count))
+
+                spacing_offset = area / max(
+                    side_count - 1,
+                    1
+                )
+
+                row = len(positions) // side_count
+                col = len(positions) % side_count
+
+                x = (
+                    col * spacing_offset
+                ) - (area / 2)
+
+                z = (
+                    row * spacing_offset
+                ) - (area / 2)
+
                 y = 0
 
                 new_pos = (x, y, z)
