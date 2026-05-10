@@ -41,7 +41,6 @@ class PlacementUI(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout()
 
-
         self.count_input = QtWidgets.QSpinBox()
         self.count_input.setValue(10)
 
@@ -52,6 +51,22 @@ class PlacementUI(QtWidgets.QDialog):
 
         layout.addWidget(QtWidgets.QLabel("Placement Area"))
         layout.addWidget(self.area_input)
+
+        self.pattern_dropdown = QtWidgets.QComboBox()
+
+        self.pattern_dropdown.addItems([
+            "Random",
+            "Ring"
+        ])
+
+        self.seed_input = QtWidgets.QSpinBox()
+        self.seed_input.setValue(1)
+
+        layout.addWidget(QtWidgets.QLabel("Seed"))
+        layout.addWidget(self.seed_input)
+
+        layout.addWidget(QtWidgets.QLabel("Placement Pattern"))
+        layout.addWidget(self.pattern_dropdown)
 
         self.prefix_input = QtWidgets.QLineEdit("asset")
 
@@ -84,8 +99,6 @@ class PlacementUI(QtWidgets.QDialog):
         layout.addWidget(self.group_checkbox)
         layout.addWidget(self.autorun_checkbox)
 
-
-
         self.preview_btn = QtWidgets.QPushButton("Generate Preview")
         self.confirm_btn = QtWidgets.QPushButton("Confirm Placement")
         self.clear_btn = QtWidgets.QPushButton("Clear Scene")
@@ -114,6 +127,8 @@ class PlacementUI(QtWidgets.QDialog):
             "auto_run": self.autorun_checkbox.isChecked(),
             "instance": self.instance_checkbox.isChecked(),
             "area": self.area_input.value(),
+            "pattern": self.pattern_dropdown.currentText(),
+            "seed": self.seed_input.value(),
         }
 
     def get_distance(self, pos1, pos2):         #check distance for later 
@@ -136,7 +151,7 @@ class PlacementUI(QtWidgets.QDialog):
         self.clear_preview()
 
         settings = self.get_settings()
-
+        random.seed(settings["seed"])
         selected = cmds.ls(selection=True)
 
         if selected:
@@ -170,18 +185,36 @@ class PlacementUI(QtWidgets.QDialog):
         max_attempts = 1000
 
 
+        pattern = settings["pattern"]
+
         while len(positions) < count and attempts < max_attempts:
 
             attempts += 1
 
+            if pattern == "Random":
 
-            x = random.uniform(-area, area)
-            z = random.uniform(-area, area)
-            y = 0
+                x = random.uniform(-area, area)
+                z = random.uniform(-area, area)
+                y = 0
 
-            new_pos = (x, y, z)
+                new_pos = (x, y, z)
+
+            elif pattern == "Ring":
+
+                radius = area
+
+                angle = (
+                    (2 * math.pi / count)
+                    * len(positions)
+                )
+
+                x = math.cos(angle) * radius
+                z = math.sin(angle) * radius
+                y = 0
+
+                new_pos = (x, y, z)
+
             valid = True
-
 
             if collision:
 
@@ -191,7 +224,6 @@ class PlacementUI(QtWidgets.QDialog):
                         new_pos,
                         existing_pos
                     )
-
 
                     if distance < spacing:
 
@@ -223,6 +255,8 @@ class PlacementUI(QtWidgets.QDialog):
                 )
 
                 preview_objects.append(cube)
+
+                
 
     def clear_preview(self):
 
