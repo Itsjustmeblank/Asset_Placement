@@ -12,12 +12,8 @@ positions = []
 placement_ui = None
 source_asset = None
 
-asset_generators = {}
 active_generator = None
 
-def register_generator(name, func):
-
-    asset_generators[name] = func
 
 def set_active_generator(generator_function):
 
@@ -134,28 +130,6 @@ class PlacementUI(QtWidgets.QDialog):
 
         layout.addWidget(self.area_object_checkbox)
 
-        self.generator_dropdown = QtWidgets.QComboBox()
-
-        self.generator_dropdown.addItems(
-            asset_generators.keys()
-        )
-        layout.addWidget(
-            QtWidgets.QLabel("Generator")
-        )
-        layout.addWidget(
-            self.generator_dropdown
-        )
-        self.generator_checkbox = QtWidgets.QCheckBox(
-    "Use Generator"
-)
-
-        self.generator_checkbox.setChecked(False)
-
-        layout.addWidget(
-            self.generator_checkbox
-        )
-
-
         self.setLayout(layout)
 
 
@@ -179,10 +153,6 @@ class PlacementUI(QtWidgets.QDialog):
             "pattern": self.pattern_dropdown.currentText(),
             "seed": self.seed_input.value(),
             "area_object": self.area_object_checkbox.isChecked(),
-            "generator_mode": (
-            self.generator_checkbox.isChecked()
-            or active_generator is not None
-                ),
         }
 
     def get_distance(self, pos1, pos2):         #check distance for later 
@@ -426,6 +396,7 @@ class PlacementUI(QtWidgets.QDialog):
         global active_generator
 
         if not source_asset and not active_generator:
+
             cmds.warning(
                 "Select an asset or assign a generator."
             )
@@ -441,25 +412,12 @@ class PlacementUI(QtWidgets.QDialog):
 
         for i, pos in enumerate(positions):
 
-            if settings["generator_mode"]:
+            # Procedural Generator
+            if active_generator:
 
-                if active_generator:
+                asset = active_generator()
 
-                    asset = active_generator()
-
-                else:
-
-                    generator_name = (
-                        self.generator_dropdown.currentText()
-                    )
-
-                    generator_func = (
-                        asset_generators[generator_name]
-                    )
-
-                    asset = generator_func()
-
-
+            # Instance Existing Asset
             elif settings["instance"]:
 
                 asset = cmds.instance(
@@ -467,6 +425,7 @@ class PlacementUI(QtWidgets.QDialog):
                     name="{}_{}".format(prefix, i)
                 )[0]
 
+            # Duplicate Existing Asset
             else:
 
                 asset = cmds.duplicate(

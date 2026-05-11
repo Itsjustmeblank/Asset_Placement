@@ -1,4 +1,8 @@
+import maya.cmds as cmds
+import importlib
 import assetPlacement
+
+importlib.reload(assetPlacement)
 
 def generate_tree():
 
