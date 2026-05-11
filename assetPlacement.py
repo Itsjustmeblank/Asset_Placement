@@ -13,6 +13,7 @@ placement_ui = None
 source_asset = None
 
 active_generator = None
+area_object = None
 
 
 def set_active_generator(generator_function):
@@ -170,36 +171,75 @@ class PlacementUI(QtWidgets.QDialog):
             (y2 - y1) ** 2 +
             (z2 - z1) ** 2
         )
-    def get_area_bounds(self):
+    def get_area_points(self):
 
-        selected = cmds.ls(selection=True)
-
-        if len(selected) < 2:
-
+        global area_object
+        if not area_object:
             cmds.warning(
                 "Select asset first, area object second."
             )
 
             return None
-
-        area_object = selected[1]       #second selected
-
-        bbox = cmds.exactWorldBoundingBox(
-            area_object
+        faces = cmds.polyEvaluate(
+            area_object,
+            face=True
         )
 
-        min_x = bbox[0]
-        max_x = bbox[3]
-        min_z = bbox[2]
-        max_z = bbox[5]
+        if faces <= 0:
 
-        return (
-                min_x,
-                max_x,
-                min_z,
-                max_z
+            cmds.warning(
+                "Area object must be a polygon mesh."
             )
 
+            return None
+
+        random_face = random.randint(
+            0,
+            faces - 1
+        )
+
+        face_name = "{}.f[{}]".format(
+            area_object,
+            random_face
+        )
+
+        verts = cmds.polyInfo(
+            face_name,
+            faceToVertex=True
+        )
+
+        if not verts:
+            return None
+
+        vert_indices = [
+            int(v)
+            for v in verts[0].split()
+            if v.isdigit()
+        ]
+
+        vertex_positions = []
+
+        for index in vert_indices:
+            vert = "{}.vtx[{}]".format(
+                area_object,
+                index
+            )
+            pos = cmds.pointPosition(
+                vert,
+                world=True
+            )
+
+            vertex_positions.append(pos)
+
+        avg_x = sum(p[0] for p in vertex_positions) / len(vertex_positions)
+        avg_y = sum(p[1] for p in vertex_positions) / len(vertex_positions)
+        avg_z = sum(p[2] for p in vertex_positions) / len(vertex_positions)
+
+        return (
+            avg_x,
+            avg_y,
+            avg_z
+        )
     def generate_preview(self):
 
         global preview_objects
@@ -211,6 +251,12 @@ class PlacementUI(QtWidgets.QDialog):
         settings = self.get_settings()
         random.seed(settings["seed"])
         selected = cmds.ls(selection=True)
+        global area_object
+
+        if len(selected) >= 2:
+            area_object = selected[1]
+        else:
+            area_object = None
 
         if selected:
 
@@ -272,26 +318,24 @@ class PlacementUI(QtWidgets.QDialog):
 
             if pattern == "Random":
 
+                # Area Object Placement
                 if settings["area_object"]:
 
-                    bounds = self.get_area_bounds()
+                    surface_point = self.get_area_points()
 
-                    if not bounds:
+                    if not surface_point:
                         return
 
-                    min_x, max_x, min_z, max_z = bounds
+                    new_pos = surface_point
 
-                    x = random.uniform(min_x, max_x)
-                    z = random.uniform(min_z, max_z)
-
+                # Standard World Placement
                 else:
 
                     x = random.uniform(-area, area)
                     z = random.uniform(-area, area)
+                    y = 0
 
-                y = 0
-
-                new_pos = (x, y, z)
+                    new_pos = (x, y, z)
 
             elif pattern == "Ring":
 
@@ -457,18 +501,13 @@ class PlacementUI(QtWidgets.QDialog):
                     name="{}_{}".format(prefix, i)
                 )[0]
 
-            bbox = cmds.exactWorldBoundingBox(asset)
-
-            asset_height = abs(
-                bbox[4] - bbox[1]
-            )
-
             cmds.move(
                 pos[0],
-                pos[1] + (asset_height / 2.0),
+                pos[1],
                 pos[2],
                 asset
             )
+
             final_objects.append(asset)
 
         if settings["auto_group"]:
