@@ -108,16 +108,13 @@ class PlacementUI(QtWidgets.QDialog):
         self.group_checkbox = QtWidgets.QCheckBox("Auto Group")
         self.group_checkbox.setChecked(True)
 
-        self.autorun_checkbox = QtWidgets.QCheckBox("Auto-Run Placement")
-        self.autorun_checkbox.setChecked(False)
         self.instance_checkbox = QtWidgets.QCheckBox("Use Instances")
-        self.instance_checkbox.setChecked(False)
+        self.instance_checkbox.setChecked(True)
 
         layout.addWidget(self.instance_checkbox)
         layout.addWidget(self.preview_checkbox)
         layout.addWidget(self.collision_checkbox)
         layout.addWidget(self.group_checkbox)
-        layout.addWidget(self.autorun_checkbox)
 
         self.preview_btn = QtWidgets.QPushButton("Generate Preview")
         self.confirm_btn = QtWidgets.QPushButton("Confirm Placement")
@@ -128,7 +125,7 @@ class PlacementUI(QtWidgets.QDialog):
         layout.addWidget(self.clear_btn)
 
         self.area_object_checkbox = QtWidgets.QCheckBox(
-            "Use Selected Area Object"
+            "Use Selected Area Object(Selection Method)"
         )
 
         self.area_object_checkbox.setChecked(False)
@@ -153,7 +150,6 @@ class PlacementUI(QtWidgets.QDialog):
             "preview": self.preview_checkbox.isChecked(),
             "collision": self.collision_checkbox.isChecked(),
             "auto_group": self.group_checkbox.isChecked(),
-            "auto_run": self.autorun_checkbox.isChecked(),
             "instance": self.instance_checkbox.isChecked(),
             "area": self.area_input.value(),
             "pattern": self.pattern_dropdown.currentText(),
@@ -171,15 +167,18 @@ class PlacementUI(QtWidgets.QDialog):
             (y2 - y1) ** 2 +
             (z2 - z1) ** 2
         )
-    def get_area_points(self):
+    def get_random_surface_point(self):
 
         global area_object
+
         if not area_object:
+
             cmds.warning(
                 "Select asset first, area object second."
             )
 
             return None
+
         faces = cmds.polyEvaluate(
             area_object,
             face=True
@@ -217,9 +216,12 @@ class PlacementUI(QtWidgets.QDialog):
             if v.isdigit()
         ]
 
-        vertex_positions = []
+        if len(vert_indices) < 3:
+            return None
 
+        vertex_positions = []
         for index in vert_indices:
+
             vert = "{}.vtx[{}]".format(
                 area_object,
                 index
@@ -228,18 +230,37 @@ class PlacementUI(QtWidgets.QDialog):
                 vert,
                 world=True
             )
-
             vertex_positions.append(pos)
 
-        avg_x = sum(p[0] for p in vertex_positions) / len(vertex_positions)
-        avg_y = sum(p[1] for p in vertex_positions) / len(vertex_positions)
-        avg_z = sum(p[2] for p in vertex_positions) / len(vertex_positions)
+        p1 = vertex_positions[0]
+        p2 = vertex_positions[1]
+        p3 = vertex_positions[2]
 
-        return (
-            avg_x,
-            avg_y,
-            avg_z
+        r1 = random.random()
+        r2 = random.random()
+
+        sqrt_r1 = math.sqrt(r1)
+
+        u = 1 - sqrt_r1
+        v = sqrt_r1 * (1 - r2)
+        w = sqrt_r1 * r2
+        x = (
+            u * p1[0] +
+            v * p2[0] +
+            w * p3[0]
         )
+        y = (
+            u * p1[1] +
+            v * p2[1] +
+            w * p3[1]
+        )
+        z = (
+            u * p1[2] +
+            v * p2[2] +
+            w * p3[2]
+        )
+        return (x, y, z)
+    
     def generate_preview(self):
 
         global preview_objects
@@ -289,6 +310,13 @@ class PlacementUI(QtWidgets.QDialog):
         elif active_generator:
 
             temp_asset = active_generator()
+            if not cmds.objExists(temp_asset):
+
+                cmds.warning(
+                    "Generator must return a valid transform."
+                )
+
+                return
 
             bbox = cmds.exactWorldBoundingBox(
                 temp_asset
@@ -318,17 +346,15 @@ class PlacementUI(QtWidgets.QDialog):
 
             if pattern == "Random":
 
-                # Area Object Placement
                 if settings["area_object"]:
 
-                    surface_point = self.get_area_points()
+                    surface_point = self.get_random_surface_point()
 
                     if not surface_point:
                         return
 
                     new_pos = surface_point
 
-                # Standard World Placement
                 else:
 
                     x = random.uniform(-area, area)
@@ -366,7 +392,10 @@ class PlacementUI(QtWidgets.QDialog):
 
             elif pattern == "Grid":
 
-                side_count = int(math.sqrt(count))
+                side_count = max(
+                    int(math.ceil(math.sqrt(count))),
+                    1
+                )
 
                 row = len(positions) // side_count
                 col = len(positions) % side_count
@@ -385,7 +414,10 @@ class PlacementUI(QtWidgets.QDialog):
 
             elif pattern == "Box":
 
-                side_count = int(math.sqrt(count))
+                side_count = max(
+                    int(math.ceil(math.sqrt(count))),
+                    1
+                )
 
                 spacing_offset = area / max(
                     side_count - 1,
@@ -444,6 +476,10 @@ class PlacementUI(QtWidgets.QDialog):
                 )
 
                 preview_objects.append(cube)
+                cmds.setAttr(
+                    cube + ".template",
+                    1
+                )
 
                 
 
@@ -486,6 +522,13 @@ class PlacementUI(QtWidgets.QDialog):
             if active_generator:
 
                 asset = active_generator()
+                if not cmds.objExists(asset):
+
+                    cmds.warning(
+                        "Generator must return a valid transform."
+                    )
+
+                    continue
 
             elif settings["instance"]:
 
@@ -501,9 +544,15 @@ class PlacementUI(QtWidgets.QDialog):
                     name="{}_{}".format(prefix, i)
                 )[0]
 
+            bbox = cmds.exactWorldBoundingBox(asset)
+
+            asset_height = abs(
+                bbox[4] - bbox[1]
+            )
+
             cmds.move(
                 pos[0],
-                pos[1],
+                pos[1] + (asset_height / 2.0),
                 pos[2],
                 asset
             )
