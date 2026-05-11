@@ -1,4 +1,4 @@
-import maya.cmds
+import maya.cmds as cmds
 from PySide2 import QtWidgets, QtCore
 import random, math
 from shiboken2 import wrapInstance
@@ -11,6 +11,22 @@ final_objects = []
 positions = []
 placement_ui = None
 source_asset = None
+
+asset_generators = {}
+active_generator = None
+
+def register_generator(name, func):
+
+    asset_generators[name] = func
+
+def set_active_generator(generator_function):
+
+    global active_generator
+    active_generator = generator_function
+
+def get_generated_positions():
+
+    return positions
 
 def maya_main_window():
 
@@ -118,6 +134,28 @@ class PlacementUI(QtWidgets.QDialog):
 
         layout.addWidget(self.area_object_checkbox)
 
+        self.generator_dropdown = QtWidgets.QComboBox()
+
+        self.generator_dropdown.addItems(
+            asset_generators.keys()
+        )
+        layout.addWidget(
+            QtWidgets.QLabel("Generator")
+        )
+        layout.addWidget(
+            self.generator_dropdown
+        )
+        self.generator_checkbox = QtWidgets.QCheckBox(
+    "Use Generator"
+)
+
+        self.generator_checkbox.setChecked(False)
+
+        layout.addWidget(
+            self.generator_checkbox
+        )
+
+
         self.setLayout(layout)
 
 
@@ -141,6 +179,7 @@ class PlacementUI(QtWidgets.QDialog):
             "pattern": self.pattern_dropdown.currentText(),
             "seed": self.seed_input.value(),
             "area_object": self.area_object_checkbox.isChecked(),
+            "generator_mode": self.generator_checkbox.isChecked(),
         }
 
     def get_distance(self, pos1, pos2):         #check distance for later 
@@ -198,6 +237,10 @@ class PlacementUI(QtWidgets.QDialog):
         if selected:
             source_asset = selected[0]
 
+
+        width = 1
+        height = 1
+        depth = 1
 
         if selected:
 
@@ -377,9 +420,12 @@ class PlacementUI(QtWidgets.QDialog):
         global final_objects
         global positions
         global source_asset
+        global active_generator
 
-        if not source_asset:
-            cmds.warning("Generate preview with an asset selected.")
+        if not source_asset and not active_generator:
+            cmds.warning(
+                "Select an asset or assign a generator."
+            )
             return
 
         if final_objects:
@@ -390,10 +436,28 @@ class PlacementUI(QtWidgets.QDialog):
         settings = self.get_settings()
         prefix = settings["prefix"]
 
-  
-        for i, pos in enumerate(positions):         #duplicates
+        for i, pos in enumerate(positions):
 
-            if settings["instance"]:
+            if settings["generator_mode"]:
+
+                if active_generator:
+
+                    asset = active_generator()
+
+                else:
+
+                    generator_name = (
+                        self.generator_dropdown.currentText()
+                    )
+
+                    generator_func = (
+                        asset_generators[generator_name]
+                    )
+
+                    asset = generator_func()
+
+
+            elif settings["instance"]:
 
                 asset = cmds.instance(
                     source_asset,
@@ -413,8 +477,8 @@ class PlacementUI(QtWidgets.QDialog):
                 pos[2],
                 asset
             )
-            final_objects.append(asset)
 
+            final_objects.append(asset)
 
         if settings["auto_group"]:
 
@@ -431,9 +495,9 @@ class PlacementUI(QtWidgets.QDialog):
                 final_objects,
                 group_name
             )
+
         self.clear_preview()
         self.close()
-
 
 
     def on_preview(self):
@@ -459,17 +523,15 @@ class PlacementUI(QtWidgets.QDialog):
         final_objects = []
 
 
-
-# Run Tool
 def run_tool():
+
     global placement_ui
 
     try:
         placement_ui.close()
+        placement_ui.deleteLater()
     except:
         pass
 
     placement_ui = PlacementUI()
     placement_ui.show()
-
-run_tool()
