@@ -552,7 +552,7 @@ class PlacementUI(QtWidgets.QDialog):
 
             cmds.move(
                 pos[0],
-                pos[1] + (asset_height / 2.0),
+                pos[1],
                 pos[2],
                 asset
             )
