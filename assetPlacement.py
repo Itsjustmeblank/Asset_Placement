@@ -179,7 +179,10 @@ class PlacementUI(QtWidgets.QDialog):
             "pattern": self.pattern_dropdown.currentText(),
             "seed": self.seed_input.value(),
             "area_object": self.area_object_checkbox.isChecked(),
-            "generator_mode": self.generator_checkbox.isChecked(),
+            "generator_mode": (
+            self.generator_checkbox.isChecked()
+            or active_generator is not None
+                ),
         }
 
     def get_distance(self, pos1, pos2):         #check distance for later 
