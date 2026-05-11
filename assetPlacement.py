@@ -220,20 +220,40 @@ class PlacementUI(QtWidgets.QDialog):
 
             source_asset = None
 
-
         width = 1
         height = 1
         depth = 1
 
-        if selected:
+        if selected and not active_generator:
+
+            temp_asset = cmds.duplicate(
+                selected[0]
+            )[0]
 
             bbox = cmds.exactWorldBoundingBox(
-            selected[0]
+                temp_asset
             )
 
-            width = bbox[3] - bbox[0]
-            height = bbox[4] - bbox[1]
-            depth = bbox[5] - bbox[2]
+            width = abs(bbox[3] - bbox[0])
+            height = abs(bbox[4] - bbox[1])
+            depth = abs(bbox[5] - bbox[2])
+
+            cmds.delete(temp_asset)
+
+        elif active_generator:
+
+            temp_asset = active_generator()
+
+            bbox = cmds.exactWorldBoundingBox(
+                temp_asset
+            )
+
+            width = abs(bbox[3] - bbox[0])
+            height = abs(bbox[4] - bbox[1])
+            depth = abs(bbox[5] - bbox[2])
+
+            cmds.delete(temp_asset)
+
 
 
         count = settings["count"]
@@ -372,16 +392,9 @@ class PlacementUI(QtWidgets.QDialog):
                     )
                 )[0]
 
-                cmds.scale(
-                    width,
-                    height,
-                    depth,
-                    cube
-                )
-
                 cmds.move(
                     new_pos[0],
-                    new_pos[1],
+                    new_pos[1] + (height / 2.0),
                     new_pos[2],
                     cube
                 )
@@ -430,7 +443,6 @@ class PlacementUI(QtWidgets.QDialog):
 
                 asset = active_generator()
 
-            # Instance Existing Asset
             elif settings["instance"]:
 
                 asset = cmds.instance(
@@ -438,7 +450,6 @@ class PlacementUI(QtWidgets.QDialog):
                     name="{}_{}".format(prefix, i)
                 )[0]
 
-            # Duplicate Existing Asset
             else:
 
                 asset = cmds.duplicate(
@@ -446,13 +457,18 @@ class PlacementUI(QtWidgets.QDialog):
                     name="{}_{}".format(prefix, i)
                 )[0]
 
+            bbox = cmds.exactWorldBoundingBox(asset)
+
+            asset_height = abs(
+                bbox[4] - bbox[1]
+            )
+
             cmds.move(
                 pos[0],
-                pos[1],
+                pos[1] + (asset_height / 2.0),
                 pos[2],
                 asset
             )
-
             final_objects.append(asset)
 
         if settings["auto_group"]:
