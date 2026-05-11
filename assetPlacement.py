@@ -20,6 +20,10 @@ def set_active_generator(generator_function):
     global active_generator
     active_generator = generator_function
 
+def clear_active_generator():
+    global active_generator
+    active_generator = None
+
 def get_generated_positions():
 
     return positions
@@ -133,6 +137,7 @@ class PlacementUI(QtWidgets.QDialog):
         self.setLayout(layout)
 
 
+
     def connect_signals(self):
         self.preview_btn.clicked.connect(self.on_preview)
         self.confirm_btn.clicked.connect(self.on_confirm)
@@ -208,7 +213,12 @@ class PlacementUI(QtWidgets.QDialog):
         selected = cmds.ls(selection=True)
 
         if selected:
+
             source_asset = selected[0]
+
+        else:
+
+            source_asset = None
 
 
         width = 1
@@ -354,6 +364,9 @@ class PlacementUI(QtWidgets.QDialog):
                 positions.append(new_pos)
 
                 cube = cmds.polyCube(
+                    width=width,
+                    height=height,
+                    depth=depth,
                     name="previewCube_{}".format(
                         len(positions)
                     )
